@@ -2,6 +2,8 @@
 
 An advanced web-based tool to calculate, visualize, and semantically analyze transcription errors, going beyond standard metrics by leveraging AI to understand the _meaning_ behind mistakes.
 
+[DEMO PAGE](https://micbed86.github.io/sWER/)
+
 ## About The Project
 
 Standard transcription quality metrics like Word Error Rate (WER) and Character Error Rate (CER) are invaluable, but they treat all errors equally. A simple typo like "the" vs. "teh" is counted the same as a critical semantic error like "approve" vs. "oppose".
