@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sWER - Semantic Word Error Rater - Transcription Error Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ==========================================================================
+           --- Neon UI Style by micbed86 ---
+           This stylesheet defines a dark, neon-themed UI with glassmorphism effects.
+           It uses CSS custom properties (variables) for easy theme management.
+           ========================================================================== */
+
+        /* --- Root & Global Styles --- */
+        :root {
+            --bg-primary: #0A0A0B;
+            --bg-secondary: #151517;
+            --bg-tertiary: #1E1E21;
+            --neon-purple: #B026FF;
+            --neon-cyan: #00D4FF;
+            --neon-pink: #FF0080;
+            --neon-green: #00FF88;
+            --glass-bg: rgba(30, 30, 33, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: rgba(176, 38, 255, 0.1);
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A8;
+            --text-disabled: #585862;
+            --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* A subtle floating animation for the background gradients to create a dynamic feel. */
+        @keyframes bgFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-20px, -20px) scale(1.1); }
+        }
+
+        /* --- Base & Body --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-primary);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* The ::before pseudo-element creates the floating gradient background effect. */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(176, 38, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.1) 0%, transparent 40%);
+            animation: bgFloat 20s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        /* --- Layout & Containers --- */
+        #app-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            text-align: center;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        /* --- Component: Glass Panel --- */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(30, 30, 33, 0.8) 0%, rgba(21, 21, 23, 0.6) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            padding: 24px;
+        }
+
+        /* --- Component: Panels & Text Areas --- */
+        .panels-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .panel label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            background: rgba(10, 10, 11, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 0 3px rgba(176, 38, 255, 0.2), inset 0 0 20px rgba(176, 38, 255, 0.1);
+        }
+
+        /* --- Component: Controls & Buttons --- */
+        #controls-panel {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.25rem;
+        }
+
+        button {
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+        }
+
+        #compare-btn, #ai-analyze-btn, #save-api-key {
+            background: linear-gradient(135deg, #B026FF 0%, #8B00CC 100%);
+            color: white;
+            box-shadow: 0 0 20px rgba(176, 38, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+        #compare-btn:hover, #ai-analyze-btn:hover, #save-api-key:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(176, 38, 255, 0.8), 0 4px 16px rgba(176, 38, 255, 0.4);
+        }
+        
+        #ai-analyze-btn:disabled {
+            background: var(--text-disabled);
+            color: var(--bg-secondary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #clear-api-key-btn, #cancel-api-key {
+            background: transparent;
+            border: 1px solid var(--neon-pink);
+            color: var(--neon-pink);
+        }
+        #clear-api-key-btn:hover, #cancel-api-key:hover {
+            background: rgba(255, 0, 128, 0.1);
+            box-shadow: 0 0 10px rgba(255, 0, 128, 0.3);
+        }
+        
+        /* --- Component: Results & Metrics --- */
+        .hidden {
+            display: none;
+        }
+
+        #results-panel, #diff-container {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        #results-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .metric-card h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .metric-card p {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .metric-card.semantic p {
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* --- Component: Diff Visualization --- */
+        #diff-container .panel div {
+            min-height: 120px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .diff-word {
+            padding: 3px 5px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .diff-word:hover {
+            transform: scale(1.05);
+        }
+
+        .diff-word.insertion { background-color: rgba(0, 255, 136, 0.2); color: var(--neon-green); }
+        .diff-word.deletion { background-color: rgba(255, 0, 128, 0.2); color: var(--neon-pink); text-decoration: line-through; }
+        .diff-word.substitution { background-color: rgba(0, 212, 255, 0.2); color: var(--neon-cyan); }
+        .diff-word.formal-error { background-color: rgba(160, 160, 168, 0.2); color: var(--text-secondary); text-decoration: none; }
+        .diff-word.match { background-color: transparent; color: var(--text-primary); }
+        .diff-word.ignored { opacity: 0.4; text-decoration: line-through; background-color: rgba(160, 160, 168, 0.2); }
+
+        /* --- Component: API Key Modal --- */
+        #api-key-modal {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            margin: auto;
+        }
+        #api-key-modal::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+        }
+        #api-key-modal h2 { 
+            margin-top: 0;
+            color: var(--text-primary);
+        }
+        #api-key-modal p { font-size: 0.9rem; color: var(--text-secondary); }
+        #api-key-modal input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            margin-top: 1rem;
+            background: rgba(10, 10, 11, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        #api-key-modal input[type="password"]:focus {
+            outline: none;
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 0 3px rgba(176, 38, 255, 0.2);
+        }
+        #api-key-modal .modal-actions {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        #api-key-modal .storage-options {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        /* --- Component: Context Menu --- */
+        #context-menu {
+            position: absolute;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.5rem;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: fadeIn 0.1s ease-out;
+            backdrop-filter: blur(10px);
+        }
+        #context-menu button {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            text-align: left;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 6px;
+            box-shadow: none;
+            font-weight: 500;
+        }
+        #context-menu button:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.1);
+            transform: none;
+        }
+        #context-menu button::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 12px;
+            background-color: transparent;
+        }
+        #context-menu button.substitution::before { background-color: var(--neon-cyan); }
+        #context-menu button.deletion::before { background-color: var(--neon-pink); }
+        #context-menu button.insertion::before { background-color: var(--neon-green); }
+        #context-menu button.formal-error::before { background-color: var(--text-secondary); }
+        #context-menu button.ignore::before { background-color: var(--text-disabled); }
+
+        /* --- Component: Custom Checkbox / Radio --- */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        .checkbox-container input[type="checkbox"],
+        .checkbox-container input[type="radio"] {
+            display: none;
+        }
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            background: rgba(10, 10, 11, 0.6);
+            border: 2px solid var(--glass-border);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .checkbox-container:hover .checkbox-custom {
+            border-color: var(--neon-purple);
+        }
+        .checkbox-container input[type="checkbox"]:checked + .checkbox-custom,
+        .checkbox-container input[type="radio"]:checked + .checkbox-custom {
+            background: var(--neon-purple);
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 10px rgba(176, 38, 255, 0.5);
+        }
+        .checkbox-container input[type="checkbox"]:checked + .checkbox-custom::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+        }
+        .checkbox-container input[type="radio"] + .checkbox-custom {
+            border-radius: 50%;
+        }
+        .checkbox-container input[type="radio"]:checked + .checkbox-custom::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        /* --- Component: Inline Edit Input --- */
+        .inline-edit {
+            padding: 2px 4px;
+            border-radius: 6px;
+            border: 1px solid var(--neon-purple);
+            background: var(--bg-secondary);
+            color: white;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .panels-container { grid-template-columns: 1fr; }
+            #results-panel { grid-template-columns: 1fr 1fr; }
+            #controls-panel { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="app-container">
+        <h1>sWER - Semantic Word Error Rater</h1>
+        <h2 style="align-self: center;">Transcription Error Analyzer</h2>
+
+
+        <div class="panels-container">
+            <div class="panel">
+                <label for="source-text">Source (Ground Truth)</label>
+                <textarea id="source-text" placeholder="Paste the original text here..."></textarea>
+            </div>
+            <div class="panel">
+                <label for="hypothesis-text">Hypothesis (Transcription)</label>
+                <textarea id="hypothesis-text" placeholder="Paste the transcribed text here..."></textarea>
+            </div>
+        </div>
+
+        <div id="controls-panel" class="glass-panel">
+            <button id="compare-btn">Compare</button>
+            <label class="checkbox-container">
+                <input type="checkbox" id="normalize-toggle" checked>
+                <span class="checkbox-custom"></span>
+                <span>Ignore formatting</span>
+            </label>
+            <button id="ai-analyze-btn" disabled>Semantic Analysis (AI)</button>
+            <button id="clear-api-key-btn" class="hidden">Clear API Key</button>
+        </div>
+
+        <div id="results-panel" class="hidden">
+            <div class="metric-card glass-panel"><h2 title="Word Error Rate">WER (%)</h2><p id="wer-result">-</p></div>
+            <div class="metric-card glass-panel"><h2 title="Character Error Rate">CER (%)</h2><p id="cer-result">-</p></div>
+            <div class="metric-card glass-panel"><h2>Substitutions</h2><p id="substitutions-result">-</p></div>
+            <div class="metric-card glass-panel"><h2>Deletions</h2><p id="deletions-result">-</p></div>
+            <div class="metric-card glass-panel"><h2>Insertions</h2><p id="insertions-result">-</p></div>
+            <div class="metric-card glass-panel semantic"><h2>Semantic WER</h2><p id="semantic-wer-result">-</p></div>
+        </div>
+
+        <div id="diff-container" class="hidden panels-container">
+            <div class="panel">
+                <label>Source Diff</label>
+                <div id="source-diff" class="glass-panel"></div>
+            </div>
+            <div class="panel">
+                <label>Hypothesis Diff</label>
+                <div id="hypothesis-diff" class="glass-panel"></div>
+            </div>
+        </div>
+    </div>
+
+    <dialog id="api-key-modal">
+        <h2>Google AI API Key Required</h2>
+        <p>To perform semantic analysis, please provide your Google AI API key. Your key is stored securely in your browser and is never sent anywhere else.</p>
+        <input type="password" id="api-key-input" placeholder="Enter your API key">
+        <div class="storage-options">
+            <label class="checkbox-container">
+                <input type="radio" name="storage-type" value="session" checked>
+                <span class="checkbox-custom"></span>
+                <span>Remember for this session only</span>
+            </label>
+            <label class="checkbox-container">
+                <input type="radio" name="storage-type" value="local">
+                <span class="checkbox-custom"></span>
+                <span>Remember on this device</span>
+            </label>
+        </div>
+        <div class="modal-actions">
+            <button id="cancel-api-key">Cancel</button>
+            <button id="save-api-key">Save and Continue</button>
+        </div>
+    </dialog>
+
+    <div id="context-menu" class="hidden"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // =================================================================================
+            // I. DOM ELEMENT REFERENCES
+            // Caching DOM elements for efficient and repeated access throughout the script.
+            // =================================================================================
+            const sourceTextEl = document.getElementById('source-text');
+            const hypothesisTextEl = document.getElementById('hypothesis-text');
+            const compareBtn = document.getElementById('compare-btn');
+            const normalizeToggle = document.getElementById('normalize-toggle');
+            const aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
+            const clearApiKeyBtn = document.getElementById('clear-api-key-btn');
+
+            const resultsPanel = document.getElementById('results-panel');
+            const diffContainer = document.getElementById('diff-container');
+            
+            const werResultEl = document.getElementById('wer-result');
+            const cerResultEl = document.getElementById('cer-result');
+            const substitutionsResultEl = document.getElementById('substitutions-result');
+            const deletionsResultEl = document.getElementById('deletions-result');
+            const insertionsResultEl = document.getElementById('insertions-result');
+            const semanticWerResultEl = document.getElementById('semantic-wer-result');
+            
+            const sourceDiffEl = document.getElementById('source-diff');
+            const hypothesisDiffEl = document.getElementById('hypothesis-diff');
+
+            const apiKeyModal = document.getElementById('api-key-modal');
+            const apiKeyInput = document.getElementById('api-key-input');
+            const saveApiKeyBtn = document.getElementById('save-api-key');
+            const cancelApiKeyBtn = document.getElementById('cancel-api-key');
+
+            const contextMenuEl = document.getElementById('context-menu');
+
+            // =================================================================================
+            // II. APPLICATION STATE
+            // The central state object that drives the entire UI.
+            // =================================================================================
+
+            /**
+             * @type {Array<object>}
+             * The single source of truth for the comparison result. Each object in the array
+             * represents an aligned pair of words (or a single word in case of insertion/deletion)
+             * and its classification.
+             *
+             * Each item has the shape: {
+             * id: number,              // Unique identifier for the item
+             * type: string,            // The current classification ('match', 'substitution', etc.)
+             * originalType: string,    // The initial classification from Levenshtein
+             * sourceWord: string|null,
+             * hypothesisWord: string|null,
+             * isSemantic: boolean,     // True if the error changes meaning (determined by AI or user)
+             * isIgnored: boolean       // True if the user has chosen to ignore this item
+             * }
+             */
+            let comparisonState = [];
+
+            // =================================================================================
+            // III. API KEY MANAGEMENT
+            // Handles storing, retrieving, and clearing the Google AI API key.
+            // =================================================================================
+
+            /**
+             * Checks for a saved API key and shows or hides the "Clear API Key" button accordingly.
+             * It checks both localStorage and sessionStorage.
+             */
+            const updateClearButtonVisibility = () => {
+                const key = localStorage.getItem('googleApiKey') || sessionStorage.getItem('googleApiKey');
+                clearApiKeyBtn.classList.toggle('hidden', !key);
+            };
+
+            /**
+             * Retrieves the Google AI API key. It first checks sessionStorage, then localStorage.
+             * If no key is found, it opens a modal dialog to prompt the user for one.
+             * @returns {Promise<string>} A promise that resolves with the API key or rejects if the user cancels.
+             */
+            const getApiKey = () => {
+                return new Promise((resolve, reject) => {
+                    const sessionKey = sessionStorage.getItem('googleApiKey');
+                    if (sessionKey) return resolve(sessionKey);
+                    const localKey = localStorage.getItem('googleApiKey');
+                    if (localKey) return resolve(localKey);
+                    
+                    apiKeyModal.showModal();
+
+                    const onSave = () => {
+                        const key = apiKeyInput.value;
+                        if (key) {
+                            const storageType = document.querySelector('input[name="storage-type"]:checked').value;
+                            if (storageType === 'local') {
+                                localStorage.setItem('googleApiKey', key);
+                            } else {
+                                sessionStorage.setItem('googleApiKey', key);
+                            }
+                            apiKeyModal.close();
+                            cleanup();
+                            updateClearButtonVisibility();
+                            resolve(key);
+                        }
+                    };
+
+                    const onCancel = () => {
+                        apiKeyModal.close();
+                        cleanup();
+                        reject(new Error('API key entry cancelled.'));
+                    };
+
+                    const cleanup = () => {
+                        saveApiKeyBtn.removeEventListener('click', onSave);
+                        cancelApiKeyBtn.removeEventListener('click', onCancel);
+                    };
+
+                    saveApiKeyBtn.addEventListener('click', onSave);
+                    cancelApiKeyBtn.addEventListener('click', onCancel);
+                });
+            };
+
+            clearApiKeyBtn.addEventListener('click', () => {
+                localStorage.removeItem('googleApiKey');
+                sessionStorage.removeItem('googleApiKey');
+                alert('API Key cleared.');
+                updateClearButtonVisibility();
+            });
+
+            // =================================================================================
+            // IV. CORE COMPARISON LOGIC (LEVENSHTEIN)
+            // Functions responsible for the fundamental text comparison algorithm.
+            // =================================================================================
+
+            /**
+             * Normalizes text by converting to lowercase, removing punctuation, and collapsing whitespace.
+             * This allows for a comparison that focuses on word content rather than formatting.
+             * @param {string} text The input text to normalize.
+             * @returns {string} The normalized text.
+             */
+            const normalizeText = (text) => text.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").replace(/\s+/g, ' ').trim();
+
+            /**
+             * Calculates the Levenshtein distance between two arrays of items (words or characters)
+             * and determines the path of edits (insertions, deletions, substitutions).
+             * This function uses a dynamic programming approach to build a cost matrix (dp), then
+             * backtracks through the matrix to find the sequence of operations.
+             * @param {Array<string>} source The source array (e.g., words from the ground truth text).
+             * @param {Array<string>} hypothesis The hypothesis array (e.g., words from the transcribed text).
+             * @returns {Array<string>} An array of strings representing the optimal edit path
+             * (e.g., ['match', 'substitution', 'deletion']).
+             */
+            const calculateLevenshtein = (source, hypothesis) => {
+                const n = source.length;
+                const m = hypothesis.length;
+                // dp table stores cost and the operation type to get to that state.
+                const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(null).map(() => ({ cost: 0, type: 'match' })));
+
+                // Initialize the first row and column, representing deletions and insertions.
+                for (let i = 0; i <= n; i++) dp[i][0] = { cost: i, type: 'deletion' };
+                for (let j = 0; j <= m; j++) dp[0][j] = { cost: j, type: 'insertion' };
+                dp[0][0] = { cost: 0, type: 'match' };
+
+                // Fill the rest of the dp table.
+                for (let i = 1; i <= n; i++) {
+                    for (let j = 1; j <= m; j++) {
+                        const cost = source[i - 1] === hypothesis[j - 1] ? 0 : 1;
+                        const delCost = dp[i - 1][j].cost + 1;
+                        const insCost = dp[i][j - 1].cost + 1;
+                        const subCost = dp[i - 1][j - 1].cost + cost;
+
+                        // Choose the operation with the minimum cost.
+                        if (delCost < insCost && delCost < subCost) {
+                            dp[i][j] = { cost: delCost, type: 'deletion' };
+                        } else if (insCost < subCost) {
+                            dp[i][j] = { cost: insCost, type: 'insertion' };
+                        } else {
+                            dp[i][j] = { cost: subCost, type: cost === 0 ? 'match' : 'substitution' };
+                        }
+                    }
+                }
+                
+                // Backtrack from the end of the matrix to find the edit path.
+                const path = [];
+                let i = n, j = m;
+                while (i > 0 || j > 0) {
+                    const step = dp[i][j].type;
+                    path.unshift(step);
+                    if (step === 'substitution' || step === 'match') { i--; j--; }
+                    else if (step === 'deletion') { i--; }
+                    else if (step === 'insertion') { j--; }
+                }
+                return path;
+            };
+            
+            // =================================================================================
+            // V. STATE MANAGEMENT & UI RENDERING
+            // Functions that translate the comparison state into a visible UI.
+            // =================================================================================
+            
+            /**
+             * Builds the initial `comparisonState` array based on the Levenshtein path.
+             * This populates the state that will drive all subsequent UI updates and calculations.
+             * @param {Array<string>} sourceWords The array of source words.
+             * @param {Array<string>} hypothesisWords The array of hypothesis words.
+             * @param {Array<string>} path The edit path from `calculateLevenshtein`.
+             */
+            const buildInitialState = (sourceWords, hypothesisWords, path) => {
+                comparisonState = [];
+                let sourceIndex = 0, hypothesisIndex = 0;
+                path.forEach((type, index) => {
+                    const stateItem = {
+                        id: index,
+                        type: type,
+                        originalType: type,
+                        sourceWord: null,
+                        hypothesisWord: null,
+                        // By default, any error is considered semantic until proven otherwise by AI or user.
+                        isSemantic: type !== 'match',
+                        isIgnored: false,
+                    };
+
+                    if (type === 'match' || type === 'substitution') {
+                        stateItem.sourceWord = sourceWords[sourceIndex++];
+                        stateItem.hypothesisWord = hypothesisWords[hypothesisIndex++];
+                    } else if (type === 'deletion') {
+                        stateItem.sourceWord = sourceWords[sourceIndex++];
+                    } else if (type === 'insertion') {
+                        stateItem.hypothesisWord = hypothesisWords[hypothesisIndex++];
+                    }
+                    comparisonState.push(stateItem);
+                });
+            };
+
+            /**
+             * Recalculates all metrics (WER, S/D/I counts, Semantic WER) from the current `comparisonState`.
+             * This ensures metrics are always in sync with user edits or AI analysis.
+             */
+            const updateMetricsFromState = () => {
+                let s = 0, d = 0, i = 0, semanticErrors = 0;
+                const activeItems = comparisonState.filter(item => !item.isIgnored);
+                const sourceWordsTotal = activeItems.filter(item => item.sourceWord !== null).length;
+
+                activeItems.forEach(item => {
+                    if (item.type === 'substitution') s++;
+                    else if (item.type === 'deletion') d++;
+                    else if (item.type === 'insertion') i++;
+                    // A semantic error is any active, non-match error that is flagged as semantic.
+                    if (item.type !== 'match' && item.isSemantic) semanticErrors++;
+                });
+
+                const totalErrors = s + d + i;
+                const wer = sourceWordsTotal > 0 ? (totalErrors / sourceWordsTotal) * 100 : (activeItems.length > 0 ? 100 : 0);
+                const semanticWer = sourceWordsTotal > 0 ? (semanticErrors / sourceWordsTotal) * 100 : 0;
+                
+                werResultEl.textContent = wer.toFixed(2);
+                substitutionsResultEl.textContent = s;
+                deletionsResultEl.textContent = d;
+                insertionsResultEl.textContent = i;
+                if(semanticWerResultEl.textContent !== '-') {
+                     semanticWerResultEl.textContent = semanticWer.toFixed(2);
+                }
+            };
+
+            /**
+             * Renders the entire visual diff display from the current `comparisonState`.
+             * It clears the existing diff and rebuilds it element by element.
+             */
+            const renderFullDiffFromState = () => {
+                sourceDiffEl.innerHTML = '';
+                hypothesisDiffEl.innerHTML = '';
+                comparisonState.forEach(item => {
+                    const [sourceSpan, hypothesisSpan] = createWordSpans(item);
+                    sourceDiffEl.appendChild(sourceSpan);
+                    hypothesisDiffEl.appendChild(hypothesisSpan);
+                });
+                // After rendering, ensure the metrics are updated to reflect the current state.
+                updateMetricsFromState();
+            };
+
+            /**
+             * Creates a pair of `<span>` elements for a single item in the comparison state.
+             * It applies the correct CSS classes based on the item's type and state (e.g., ignored, semantic).
+             * @param {object} item A single state object from `comparisonState`.
+             * @returns {[HTMLSpanElement, HTMLSpanElement]} A pair of spans for the source and hypothesis diffs.
+             */
+            const createWordSpans = (item) => {
+                const sourceSpan = document.createElement('span');
+                const hypothesisSpan = document.createElement('span');
+                sourceSpan.dataset.id = item.id;
+                hypothesisSpan.dataset.id = item.id;
+                sourceSpan.classList.add('diff-word');
+                hypothesisSpan.classList.add('diff-word');
+                
+                sourceSpan.textContent = (item.sourceWord || '') + ' ';
+                hypothesisSpan.textContent = (item.hypothesisWord || '') + ' ';
+
+                let className = item.type;
+                if (item.isIgnored) {
+                    className = 'ignored';
+                } else if (className !== 'match' && !item.isSemantic) {
+                    // This is a "formal error" - an error that doesn't change meaning.
+                    className = 'formal-error';
+                }
+                
+                if (item.type !== 'match') {
+                    sourceSpan.classList.add(className);
+                    hypothesisSpan.classList.add(className);
+                    // Special handling to avoid applying deletion styles to the empty hypothesis slot, and vice-versa.
+                    if (item.type === 'deletion') hypothesisSpan.classList.remove(className);
+                    if (item.type === 'insertion') sourceSpan.classList.remove(className);
+                } else {
+                     sourceSpan.classList.add('match');
+                     hypothesisSpan.classList.add('match');
+                }
+
+                return [sourceSpan, hypothesisSpan];
+            };
+
+            // =================================================================================
+            // VI. INTERACTIVE UI: CONTEXT MENU & INLINE EDITING
+            // Logic for user interaction with the diff output.
+            // =================================================================================
+            
+            /**
+             * Displays the context menu at the event coordinates (e.g., a mouse click).
+             * Populates the menu with relevant actions based on the clicked element.
+             * @param {MouseEvent} event The click event.
+             * @param {HTMLSpanElement} span The word span that was clicked.
+             */
+            const showContextMenu = (event, span) => {
+                contextMenuEl.innerHTML = '';
+                const id = parseInt(span.dataset.id, 10);
+                const isSource = span.parentElement.id === 'source-diff';
+
+                // Different options are shown depending on whether the source or hypothesis word was clicked.
+                const options = isSource 
+                    ? ['Edit', 'Ignore']
+                    : ['Substitution', 'Deletion', 'Insertion', 'Formal Error (Ignore)', 'Edit'];
+
+                options.forEach(opt => {
+                    const button = document.createElement('button');
+                    button.textContent = opt;
+                    if (opt !== 'Edit') {
+                        button.classList.add(opt.split(' ')[0].toLowerCase());
+                    }
+                    button.onclick = () => {
+                        handleMenuAction(id, opt);
+                        contextMenuEl.classList.add('hidden');
+                    };
+                    contextMenuEl.appendChild(button);
+                });
+
+                contextMenuEl.style.top = `${event.pageY}px`;
+                contextMenuEl.style.left = `${event.pageX}px`;
+                contextMenuEl.classList.remove('hidden');
+            };
+
+            /**
+             * Handles the action chosen from the context menu, updating the `comparisonState`.
+             * @param {number} id The ID of the state item to modify.
+             * @param {string} action The action selected by the user (e.g., 'Ignore', 'Substitution').
+             */
+            const handleMenuAction = (id, action) => {
+                const item = comparisonState.find(i => i.id === id);
+                if (!item) return;
+
+                if (action === 'Edit') {
+                    // Determine which panel's word to edit based on what's available.
+                    const panelType = item.sourceWord ? 'source' : 'hypothesis';
+                    startEditing(id, panelType);
+                    return;
+                }
+                
+                const newType = action.toLowerCase();
+                if (action === 'Ignore') {
+                    item.isIgnored = !item.isIgnored;
+                } else if (action === 'Formal Error (Ignore)') {
+                    item.isSemantic = !item.isSemantic;
+                } else if (item.type === newType) {
+                    // If clicking the same type again, revert to the original state.
+                    item.type = item.originalType;
+                    item.isSemantic = item.originalType !== 'match';
+                } else {
+                    item.type = newType;
+                    item.isSemantic = true; 
+                }
+                renderFullDiffFromState();
+            };
+            
+            /**
+             * Replaces a word's `<span>` with an `<input>` field to allow for inline editing.
+             * @param {number} id The ID of the state item being edited.
+             * @param {'source'|'hypothesis'} panelType The panel containing the word to edit.
+             */
+            const startEditing = (id, panelType) => {
+                const spanToEdit = document.querySelector(`#${panelType}-diff [data-id="${id}"]`);
+                if (!spanToEdit) return;
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = spanToEdit.textContent.trim();
+                input.className = 'inline-edit';
+                
+                const finishEditing = () => {
+                    const newValue = input.value.trim();
+                    const item = comparisonState.find(i => i.id === id);
+                    
+                    if (panelType === 'source') item.sourceWord = newValue;
+                    else item.hypothesisWord = newValue;
+                    
+                    // After editing, the type may need to be re-evaluated.
+                    if (newValue === '') {
+                        if (panelType === 'source') {
+                            item.sourceWord = null;
+                            item.type = 'insertion';
+                        } else {
+                            item.hypothesisWord = null;
+                            item.type = 'deletion';
+                        }
+                    } else if (item.sourceWord === item.hypothesisWord) {
+                        item.type = 'match';
+                    } else if (item.type === 'match') {
+                        // If it was a match but now the words differ, it's a substitution.
+                        item.type = 'substitution';
+                    }
+                    
+                    renderFullDiffFromState();
+                };
+
+                input.onblur = finishEditing;
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') input.blur();
+                };
+                
+                spanToEdit.replaceWith(input);
+                input.focus();
+                input.select();
+            };
+
+            // Global click listener to hide the context menu if clicking elsewhere.
+            document.addEventListener('click', (e) => {
+                const clickedWord = e.target.closest('.diff-word');
+                if (!contextMenuEl.contains(e.target) && !clickedWord) {
+                    contextMenuEl.classList.add('hidden');
+                }
+                if (clickedWord) {
+                    e.preventDefault(); // Prevent text selection on click.
+                    showContextMenu(e, clickedWord);
+                }
+            });
+
+
+            // =================================================================================
+            // VII. AI SEMANTIC ANALYSIS
+            // Logic for preparing data for and interacting with the Google AI API.
+            // =================================================================================
+
+            /**
+             * Groups consecutive non-match/non-ignored errors into "chunks" for AI analysis.
+             * This is crucial because analyzing a single word error out of context is unreliable.
+             * By providing the AI with the error chunk and surrounding correct words (context),
+             * it can make a more accurate judgment about whether the error changes the meaning.
+             * @returns {Array<object>} An array of chunk objects, where each object contains
+             * the original state items and a payload for the AI API.
+             */
+            const collectErrorChunksForAI = () => {
+                const chunks = [];
+                let i = 0;
+                while (i < comparisonState.length) {
+                    const currentItem = comparisonState[i];
+                    if (currentItem.type === 'match' || currentItem.isIgnored) {
+                        i++;
+                        continue;
+                    }
+
+                    // Start of a new error chunk. Find where it ends.
+                    const chunkItems = [];
+                    let chunkEnd = i;
+                    while (chunkEnd < comparisonState.length && comparisonState[chunkEnd].type !== 'match' && !comparisonState[chunkEnd].isIgnored) {
+                        chunkItems.push(comparisonState[chunkEnd]);
+                        chunkEnd++;
+                    }
+
+                    const chunkStartIndex = i;
+
+                    // This helper function gets context words from before or after the chunk.
+                    const getContextWords = (wordAccessor, startIndex, count, direction) => {
+                        const words = [];
+                        for(let k = 1; k <= count; k++) {
+                            const item = comparisonState[startIndex + (k * direction)];
+                            if(item && item[wordAccessor]) {
+                                words.push(item[wordAccessor]);
+                            }
+                        }
+                        return direction === 1 ? words : words.reverse(); // Reverse if getting previous words
+                    };
+
+                    const prevSourceWords = getContextWords('sourceWord', chunkStartIndex, 2, -1);
+                    const prevHypothesisWords = getContextWords('hypothesisWord', chunkStartIndex, 2, -1);
+                    
+                    const nextSourceWords = getContextWords('sourceWord', chunkEnd - 1, 2, 1);
+                    const nextHypothesisWords = getContextWords('hypothesisWord', chunkEnd - 1, 2, 1);
+
+                    const sourceChunkWords = chunkItems.map(item => item.sourceWord).filter(Boolean);
+                    const hypothesisChunkWords = chunkItems.map(item => item.hypothesisWord).filter(Boolean);
+                    
+                    // Assemble the full context strings for the AI.
+                    const sourceContext = [...prevSourceWords, ...sourceChunkWords, ...nextSourceWords].join(' ');
+                    const hypothesisContext = [...prevHypothesisWords, ...hypothesisChunkWords, ...nextHypothesisWords].join(' ');
+
+                    chunks.push({
+                        chunkItems: chunkItems, // Keep a reference to update the state later.
+                        payload: {
+                            source_chunk: sourceChunkWords.join(' '),
+                            hypothesis_chunk: hypothesisChunkWords.join(' '),
+                            source_context: sourceContext,
+                            hypothesis_context: hypothesisContext
+                        }
+                    });
+                    
+                    i = chunkEnd; // Move pointer past the processed chunk.
+                }
+                return chunks;
+            };
+
+            aiAnalyzeBtn.addEventListener('click', async () => {
+                if (comparisonState.length === 0) return;
+                
+                aiAnalyzeBtn.disabled = true;
+                aiAnalyzeBtn.textContent = 'Analyzing...';
+
+                try {
+                    const apiKey = await getApiKey();
+                    const errorChunks = collectErrorChunksForAI();
+                    
+                    if (errorChunks.length === 0) {
+                        alert("No errors to analyze.");
+                        return; // No finally block needed here, keep button state as is.
+                    }
+                    
+                    const errorsToAnalyze = errorChunks.map(c => c.payload);
+
+                    // This detailed system prompt instructs the AI on its specific task, provides examples,
+                    // and defines the required JSON output format. This is key to getting reliable, structured data back.
+                    const systemInstructionText = `You are an expert in the analysis of transcription errors. You are language agnostic - you're an expert in all languages! Your task is to determine whether a transcription error is a "semantic error" (one that changes the meaning) or a "formal error" (one related to style, formatting, etc.). Analyze the provided list of errors. Each error may consist of one or more words (a "chunk"). Your decision must be based on an analysis of the entire chunk within its given, broader context. Examples of formal errors include: "5" vs. "five", "color" vs. "colour", "real-time" vs. "realtime", "e.g." vs. "for example", "np" vs "na przykład", "ok 1200" vs. "około tysiąc dwieście", and differences in capitalization (e.g., "Apple" vs. "apple"). Examples of semantic errors include: "cat" vs. "dog", "run" vs. "ran", "bieg" vs "biegł", "naturalny" vs. "nuturalny", "affect" vs. "effect", "historic" vs. "historical", "hodowany" vs "hodowlany", "ładny" vs "ładna", the deletion of a significant word, a spelling error that is an actual typo (not a regional variation, slang, or dialect), and incorrect inflection (e.g., wrong verb conjugation or noun declension). Return the response in JSON format with a boolean key "is_semantic_error" for each error from the input.`;
+                    
+                    const generationConfig = {
+                        temperature: 0.1, // Low temperature for more deterministic, factual output.
+                        responseMimeType: "application/json", // Enforce JSON output.
+                        // Defines the exact schema the AI's JSON output must follow.
+                        responseSchema: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: { is_semantic_error: { type: "BOOLEAN" } },
+                                required: ["is_semantic_error"]
+                            }
+                        },
+                    };
+
+                    const payload = { 
+                        contents: [{ parts: [{ text: JSON.stringify(errorsToAnalyze, null, 2) }] }],
+                        systemInstruction: { parts: [{ text: systemInstructionText }] },
+                        generationConfig 
+                    };
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const aiResults = JSON.parse(result.candidates[0].content.parts[0].text);
+                    
+                    // Update the application state with the results from the AI.
+                    aiResults.forEach((result, index) => {
+                        const chunk = errorChunks[index];
+                        if(chunk) {
+                            chunk.chunkItems.forEach(item => {
+                                const stateItem = comparisonState.find(s => s.id === item.id);
+                                if(stateItem) {
+                                    stateItem.isSemantic = result.is_semantic_error;
+                                }
+                            });
+                        }
+                    });
+                    
+                    semanticWerResultEl.textContent = '0.00'; // Prime the field before re-rendering.
+                    renderFullDiffFromState();
+
+                } catch (error) {
+                    alert(`An error occurred during AI analysis: ${error.message}`);
+                } finally {
+                    // Reset the button state regardless of success or failure.
+                    aiAnalyzeBtn.disabled = false;
+                    aiAnalyzeBtn.textContent = 'Semantic Analysis (AI)';
+                }
+            });
+
+            // =================================================================================
+            // VIII. EVENT LISTENERS & INITIALIZATION
+            // The main entry points for user actions.
+            // =================================================================================
+            compareBtn.addEventListener('click', () => {
+                const sourceText = sourceTextEl.value;
+                const hypothesisText = hypothesisTextEl.value;
+                if (!sourceText || !hypothesisText) {
+                    alert('Please provide both source and hypothesis texts.');
+                    return;
+                }
+
+                const useNormalization = normalizeToggle.checked;
+                const process = (text) => (useNormalization ? normalizeText(text) : text).split(/\s+/).filter(w => w);
+                const sourceWords = process(sourceText);
+                const hypothesisWords = process(hypothesisText);
+                
+                const path = calculateLevenshtein(sourceWords, hypothesisWords);
+                buildInitialState(sourceWords, hypothesisWords, path);
+                
+                // Calculate Character Error Rate (CER) separately.
+                const sourceChars = (useNormalization ? normalizeText(sourceText) : sourceText).split('');
+                const hypothesisChars = (useNormalization ? normalizeText(hypothesisText) : hypothesisText).split('');
+                const charPath = calculateLevenshtein(sourceChars, hypothesisChars);
+                const totalCharErrors = charPath.filter(t => t !== 'match').length;
+                const cer = sourceChars.length > 0 ? (totalCharErrors / sourceChars.length) * 100 : (hypothesisChars.length > 0 ? 100 : 0);
+                
+                resultsPanel.classList.remove('hidden');
+                diffContainer.classList.remove('hidden');
+                
+                semanticWerResultEl.textContent = '-'; // Reset Semantic WER on each new comparison.
+                cerResultEl.textContent = cer.toFixed(2);
+                
+                aiAnalyzeBtn.disabled = comparisonState.every(item => item.type === 'match');
+                
+                renderFullDiffFromState();
+            });
+            
+            // --- Initial UI setup on page load ---
+            updateClearButtonVisibility();
+        });
+    </script>
+</body>
+</html>
